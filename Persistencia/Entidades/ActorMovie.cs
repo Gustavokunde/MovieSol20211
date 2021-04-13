@@ -9,7 +9,7 @@ namespace Persistencia.Entidades
     {
         public int ActorMovieId { get; set; }
        
-        public string CharacterName { get; set; }
+        public string Character { get; set; }
 
         [ForeignKey("MovieId")]
         public int MovieId { get; set; }
