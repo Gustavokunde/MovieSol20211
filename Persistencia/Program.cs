@@ -14,224 +14,163 @@ namespace Persistencia
         static void Main(string[] args)
         {
             MovieContext _context = new MovieContext();
-            #region # LINQ - consultas
-            Console.WriteLine();
-           // Console.WriteLine("Todos os gêneros da base de dados:");
-           // foreach (Genre genero in _context.Genres)
-           // {
-           //     Console.WriteLine("{0} \t {1}", genero.GenreId, genero.Name);
-           // }
+           
+            #region # LINQ - minhas consulta
 
-            //listar todos os filmes de acao
-            Console.WriteLine();
-            Console.WriteLine("Todos os filmes do genero 'Action':");
-            var filmesAction = _context.Movies.Where(m => m.Genre.Name.Equals("Action"));
 
-            foreach (Movie filme in filmesAction)
+            //1.Listar o nome de todos personagens desempenhados por um determinado ator, incluindo a informação de qual o filme
+
+
+            var charactersByActor = _context.Characters
+                                    .Where(c => c.Actor.Name == "Judi Dench")
+                                    .Select(c => new
+                                    {
+                                        c.Actor.Name,
+                                        c.Movie.Title
+                                    });
+            Console.WriteLine("1 - Personagens do ator Judi Dench");
+
+            int countCharacters = 0;
+            foreach (var elem in charactersByActor)
             {
-                Console.WriteLine("\t{0}", filme.Title);
-            }
-
-            Console.WriteLine();
-            Console.WriteLine("Todos os filmes do genero 'Action':");
-            var filmesAction2 = from m in _context.Movies
-                                where m.GenreID == 1
-                                select m;
-            foreach (Movie filme in filmesAction2)
-            {
-                Console.WriteLine("\t{0}", filme.Title);
-            }
-
-            Console.WriteLine();
-            Console.WriteLine("Todos os filmes de cada genero:");
-            var generosFilmes = from g in _context.Genres.Include(gen => gen.Movies)
-                                select g;
-            //var generosFilmes2 = db.Genres.Include(gen => gen.Movies).ToList();
-
-            foreach (var gf in generosFilmes)
-            {
-                Console.WriteLine("Filmes do genero: " + gf.Name);
-                foreach (var f in gf.Movies)
-                {
-                    Console.WriteLine("\t{0}", f.Title);
-                }
-            }
-
-            Console.WriteLine("Nomes dos filmes do diretor Quentin Tarantino:");
-            var q0 = from f in _context.Movies
-                     where f.Director == "Quentin Tarantino"
-                     select f.Title;
-
-            foreach(String titulo in q0)
-            {
-                Console.WriteLine("\t{0}", titulo);
+                countCharacters++;
+                Console.WriteLine("\t{0} - {1}", countCharacters, elem.Title);
             }
 
 
-            
-            Console.WriteLine();
-            Console.WriteLine("Nomes dos filmes do diretor Quentin Tarantino:");
-            var q1 = from f in _context.Movies
-                     where f.Director == "Quentin Tarantino"
-                     select new
-                     {
-                         Ano = f.ReleaseDate.Year,
-                         Titulo =  f.Title
-                     };
+            //2.Mostrar o nome de todos atores que desempenharam um determinado personagem(por exemplo, quais os atores que já atuaram como "007" ?)
+            var actorsCharacters = _context.Characters
+                                    .Where(c => c.Character == "James Bond")
+                                    .Select(c => new
+                                    {
+                                        c.Character,
+                                        c.Actor.Name
+                                    });
+            Console.WriteLine("2 - Atores do personagem Darth Vader");
 
-            var q2 = _context.Movies.Where(f => f.Director == "Quentin Tarantino").Select(f => f.Title);
-
-            foreach (var item in q1)
+            int countActors = 0;
+            foreach (var elem in actorsCharacters.Distinct())
             {
-                Console.WriteLine("{0} - {1}", item.Ano, item.Titulo);
+                countActors++;
+                Console.WriteLine("\t{0} - {1}", countActors, elem.Name);
+            }
+
+            //3.Informar qual o ator desempenhou mais vezes um determinado personagem(por exemplo: qual o ator que realizou mais filmes como o “agente 007”) 
+            var actorsByMovie = _context.Characters
+                                   .Where(c => c.Movie.Title == "Star Wars")
+                                   .Select(c => new
+                                   {
+                                       c.Actor.Name
+                                   });
+
+            var mostFrequentActorByMovie = actorsByMovie
+                .GroupBy(a => a.Name)
+                .OrderByDescending(a => a.Count())
+                .Take(1)
+                .Select(a => a.Key)
+                .ToList()
+                .FirstOrDefault();
+
+            Console.WriteLine("3 - Ator que mais fez Star Wars");
+            Console.WriteLine("\t{0}", mostFrequentActorByMovie);
+
+
+            //4.Mostrar o nome e a data de nascimento do ator mais idoso e o mais novo 
+            Actor theNewestActor = _context.Actors
+                    .OrderBy(a => a.DateBirth).LastOrDefault();
+            Actor theEldestActor = _context.Actors
+                    .OrderBy(a => a.DateBirth).FirstOrDefault();
+
+            Console.WriteLine("4 - Ator mais novo - {0}", theNewestActor.Name);
+            Console.WriteLine("4 - Ator mais velho - {0}", theEldestActor.Name);
+
+
+            //5.Mostrar o nome e a data de nascimento do ator mais idoso e o mais novo de um determinado gênero
+            var theNewestActorByGender = _context.Characters
+                    .Where(a => a.Movie.Genre.Name == "Action")
+                    .Select(a => new
+                    {
+                        a.Actor.Name,
+                        a.Actor.DateBirth
+                    }
+                     )
+                    .OrderBy(a => a.DateBirth)
+                    .ToList()
+                    .LastOrDefault();
+
+            var theEldestActorByGender = _context.Characters
+                    .Where(a => a.Movie.Genre.Name == "Action")
+                    .Select(a => new
+                    {
+                        a.Actor.Name,
+                        a.Actor.DateBirth
+                    }
+                     )
+                    .OrderBy(a => a.DateBirth)
+                    .ToList()
+                    .FirstOrDefault();
+
+
+            Console.WriteLine("5 - Ator mais novo  do Genêro Action - {0}", theNewestActorByGender.Name);
+            Console.WriteLine("5 - Ator mais velho do Genêro Action - {0}", theEldestActorByGender.Name);
+
+            //6.Mostrar o valor médio das avaliações dos filmes que um determinado ator participou
+            var sumRateByActor = _context.Characters
+                                  .Where(c => c.Actor.Name == "Daniel Craig")
+                                  .Select(c =>
+                                      (decimal)c.Movie.Rating
+                                  ).Sum();
+            var lengthRateByActor = _context.Characters
+                                  .Where(c => c.Actor.Name == "Daniel Craig")
+                                  .Select(c =>
+                                      c.Movie
+                                  ).Distinct()
+                                  .Count();
+            Console.WriteLine("6 - Valor médio das avaliações dos filmes do ator Daniel Craig {0}", sumRateByActor / lengthRateByActor);
+
+            //7.Qual o elenco do filme PIOR avaliado ?
+
+            var worstRatingMovie = _context.Movies
+                .OrderByDescending(m => m.Rating)
+                .Last();
+
+            var castworstRatingMovie = _context.Characters
+                .Where(character => character.Movie.MovieId == worstRatingMovie.MovieId)
+                .Select(character => character.Actor.Name);
+
+
+
+            Console.WriteLine("7 - Elenco do filme pior avaliado: ({0})", worstRatingMovie.Title);
+            int countActorsWorstMovie = 0;
+            foreach (var actor in castworstRatingMovie)
+            {
+                countActorsWorstMovie++;
+                Console.WriteLine("\t{0} - {1}", countActorsWorstMovie, actor);
+            }
+
+            //8.Qual o elenco do filme com o pior faturamento?
+            var lowestGrossMovie = _context.Movies
+               .OrderBy(movie => movie.Gross).First();
+
+            var castLowestGrossMovie = _context.Characters
+                .Where(character => character.Movie.MovieId == lowestGrossMovie.MovieId)
+                .Select(character => character.Actor.Name);
+
+
+            Console.WriteLine("8 - Elenco do filme com o pior faturamento:({0})", lowestGrossMovie.Title);
+
+            int countActorsWorstGrossMovie = 0;
+            foreach (var actor in castLowestGrossMovie)
+            {
+                countActorsWorstGrossMovie++;
+                Console.WriteLine("\t{0} - {1}", countActorsWorstGrossMovie, actor);
             }
 
 
-            Console.WriteLine();
-            Console.WriteLine("Nomes e data dos filmes do diretor Quentin Tarantino:");
-            var q3 = from f in _context.Movies
-                     where f.Director == "Quentin Tarantino"
-                     select new { f.Title, f.ReleaseDate };
-            foreach (var f in q3)
-            {
-                Console.WriteLine("{0}\t {1}", f.ReleaseDate.ToShortDateString(), f.Title);
-            }
-
-            Console.ReadLine();
-            Console.WriteLine();
-            Console.WriteLine("Todos os gêneros ordenados pelo nome:");
-            var q4 = _context.Genres.OrderByDescending(g => g.Name);
-            foreach (var genero in q4)
-            {
-                Console.WriteLine("{0, 20}\t {1}", genero.Name, genero.Description.Substring(0, 30));
-            }
-            Console.WriteLine();
-            Console.WriteLine("Numero de filmes agrupados pelo anos de lançamento:");
-            var q5 = from f in _context.Movies
-                     group f by f.ReleaseDate.Year into grupo
-                     select new
-                     {
-                         Chave = grupo.Key,
-                         NroFilmes = grupo.Count()
-                     };
-
-            foreach (var ano in q5.OrderByDescending(g => g.NroFilmes))
-            {
-                Console.WriteLine("Ano: {0}  Numero de filmes: {1}", 
-                                    ano.Chave,
-                                    ano.NroFilmes);
-
-            }
-            //Console.WriteLine("tecle algo para continuar");
-            //Console.ReadKey();
-
-            Console.WriteLine();
-            Console.WriteLine("Projeção do faturamento total, quantidade de filmes e avaliação média agrupadas por gênero:");
-            var q6 = from f in _context.Movies
-                     group f by f.Genre.Name into grpGen
-                     select new
-                     {
-                         Categoria = grpGen.Key,
-                         Faturamento = grpGen.Sum(e => e.Gross),
-                         Avaliacao = grpGen.Average(e => e.Rating),
-                         Quantidade = grpGen.Count()
-                     };
-
-            foreach (var genero in q6)
-            {
-                Console.WriteLine("Genero: {0}", genero.Categoria);
-                Console.WriteLine("\tFaturamento total: {0}\n\t Avaliação média: {1}\n\tNumero de filmes: {2}",
-                                genero.Faturamento, genero.Avaliacao, genero.Quantidade);
-            }
-            Console.WriteLine("tecle algo para continuar");
-            Console.ReadKey();
             #endregion
 
-
-            #region - minhas consulta
-
-            #endregion
         }
-        static void Main0(string[] args)
-        {
-            MovieContext _context = new MovieContext();
-
-            Genre g1 = new Genre()
-            {
-                Name = "Comedia",
-                Description = "Filmes de comedia"
-            };
-
-            Genre g2 = new Genre()
-            {
-                Name = "Ficcao",
-                Description = "Filmes de ficcao"
-            };
-
-            _context.Genres.Add(g1);
-            _context.Genres.Add(g2);
-
-            Console.WriteLine("g1.genreId: {0}\n", g1.GenreId);
-
-            _context.SaveChanges();
-            
-            Console.WriteLine("g1.genreId: {0}\n", g1.GenreId);
-
-            Console.WriteLine("g1: {0}\n", g1.Name);
-            List<Genre> genres = _context.Genres.ToList();
-
-            foreach (Genre g in genres)
-            {
-                Console.WriteLine(String.Format("{0,2} {1,-10} {2}",
-                                    g.GenreId, g.Name, g.Description));
-            }
-
-            genres[0].Description += "/modificado";
-
-            _context.SaveChanges();
-
-            Console.WriteLine(String.Format("{0,2} {1,-10} {2}",
-                       genres[0].GenreId, genres[0].Name, genres[0].Description));
-
-            Movie m1 = new Movie() {
-
-                Title = "Back to the Future",
-                Director = "Robert Zemeckis",
-                ReleaseDate = new DateTime(1989, 01, 22),
-                Gross = 210609762M,
-                Rating = 8.5,
-                GenreID = 1
-        };
-            Movie m2 = new Movie()
-            {
-
-                Title = "Back to the Future II",
-                Director = "Robert Zemeckis",
-                ReleaseDate = new DateTime(1989, 01, 22),
-                Gross = 210609762M,
-                Rating = 8.5,
-                GenreID = 1
-            };
-
-            _context.Movies.Add(m1);
-            _context.Movies.Add(m2);
-        _context.SaveChanges();
-
-         Console.WriteLine("m1 id: {0} genero: {1}\n", 
-                                m1.MovieId,
-                                m1.Genre.Name);
-        
-        Console.WriteLine(String.Format("Genero: {0} NroFilmes: {1} Filmes: {2}\n",
-                      g1.GenreId, g1.Movies.Count, g1.Movies ));
-
-            foreach (Movie m in g1.Movies)
-            {
-                Console.WriteLine(String.Format("Titulo: {0} Diretor: {1} \n",
-                     m.Title, m.Director));
-            }
-
-        }
-
     }
+    
 }
 
