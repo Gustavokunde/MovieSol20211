@@ -166,6 +166,24 @@ namespace Persistencia
                 Console.WriteLine("\t{0} - {1}", countActorsWorstGrossMovie, actor);
             }
 
+            //9. Quantidade de personagens por um filme
+            var movie = _context.Characters
+               .Where(c => c.Movie.Title == "Jurassic Park")
+               .Select(c => new
+               {
+                   Title = c.Movie.Title,
+                   Count = c.Movie.Title.Count()
+               }
+               ).FirstOrDefault();
+
+             Console.WriteLine("9 - O filme {0} tem {1} personagens", movie.Title, movie.Count);
+
+            //10. Filme Mais antigo
+            var oldestMovie = _context.Movies
+                .OrderBy(c => c.ReleaseDate)
+                .First();
+            Console.WriteLine("9 - O filme mais antigo é o {0}, lançado na data {1}", oldestMovie.Title, oldestMovie.ReleaseDate.Date);
+
 
             #endregion
 
